@@ -2,202 +2,247 @@
 #include <vector>
 #include <cmath>
 #include <climits>
+#include <algorithm>
 
 using namespace std;
 
-// Структура множества
-struct Set {
+// Класс для хранения массива целых чисел с динамическим размером
+class IntArray {
 private:
-    // Структура узла для хранения данных
-    struct Node {
-        int data;
-        Node* next;
-        Node(int value) : data(value), next(nullptr) {}
-    };
+    int* data;
+    size_t capacity;
+    size_t size;
     
-    Node* head;
-    int count;
-
+    void resize() {
+        capacity = capacity == 0 ? 4 : capacity * 2;
+        int* newData = new int[capacity];
+        for (size_t i = 0; i < size; i++) {
+            newData[i] = data[i];
+        }
+        delete[] data;
+        data = newData;
+    }
+    
 public:
-    Set() : head(nullptr), count(0) {}
+    IntArray() : data(nullptr), capacity(0), size(0) {}
     
-    ~Set() {
-        clear();
+    ~IntArray() {
+        delete[] data;
+    }
+    
+    // Копирующий конструктор
+    IntArray(const IntArray& other) : data(nullptr), capacity(0), size(0) {
+        capacity = other.capacity;
+        size = other.size;
+        data = new int[capacity];
+        for (size_t i = 0; i < size; i++) {
+            data[i] = other.data[i];
+        }
     }
     
     // Оператор присваивания
-    Set& operator=(const Set& other) {
-        // Проверяем, что это не самоприсваивание
+    IntArray& operator=(const IntArray& other) {
         if (this != &other) {
-            // Очищаем текущее множество
-            clear();
-            // Создаем указатель для обхода исходного множества
-            Node* current = other.head;
-            // Проходим по всем элементам исходного множества
-            while (current != nullptr) {
-                // Вставляем каждый элемент в текущее множество
-                insert(current->data);
-                // Переходим к следующему элементу
-                current = current->next;
+            delete[] data;
+            capacity = other.capacity;
+            size = other.size;
+            data = new int[capacity];
+            for (size_t i = 0; i < size; i++) {
+                data[i] = other.data[i];
             }
         }
         return *this;
     }
     
-    // Добавление элемента в множество
-    bool insert(int value) {
-        // Проверяем, существует ли элемент уже в множестве
-        if (contains(value)) {
-            return false;
+    void add(int value) {
+        if (size == capacity) {
+            resize();
         }
-        
-        // Создаем новый узел с заданным значением
-        Node* newNode = new Node(value);
-        // Устанавливаем указатель нового узла на текущую голову
-        newNode->next = head;
-        // Обновляем голову списка на новый узел
-        head = newNode;
-        count++;
-        return true;
+        data[size++] = value;
     }
     
-    // Удаление элемента из множества
-    bool erase(int value) {
-        // Создаем указатель для текущего узла, начинаем с головы
-        Node* current = head;
-        // Создаем указатель для предыдущего узла
-        Node* prev = nullptr;
-        
-        // Проходим по всем узлам списка
-        while (current != nullptr) {
-            // Проверяем, совпадает ли значение текущего узла с искомым
-            if (current->data == value) {
-                // Если удаляем первый элемент
-                if (prev == nullptr) {
-                    // Обновляем голову списка на следующий элемент
-                    head = current->next;
-                } else {
-                    // Иначе связываем предыдущий узел со следующим
-                    prev->next = current->next;
+    bool remove(int value) {
+        for (size_t i = 0; i < size; i++) {
+            if (data[i] == value) {
+                for (size_t j = i; j < size - 1; j++) {
+                    data[j] = data[j + 1];
                 }
-                // Освобождаем память удаляемого узла
-                delete current;
-                // Уменьшаем счетчик элементов
-                count--;
-                // Возвращаем true - удаление успешно
+                size--;
                 return true;
             }
-            // Переходим к следующему узлу
-            prev = current;
-            current = current->next;
         }
         return false;
     }
     
-    // Проверка наличия элемента в множестве
     bool contains(int value) const {
-        // Создаем указатель для текущего узла, начинаем с головы
-        Node* current = head;
-        // Проходим по всем узлам списка
-        while (current != nullptr) {
-            // Проверяем, совпадает ли значение текущего узла с искомым
-            if (current->data == value) {
-                // Если нашли, возвращаем true
+        for (size_t i = 0; i < size; i++) {
+            if (data[i] == value) {
                 return true;
             }
-            // Переходим к следующему узлу
-            current = current->next;
         }
-        // Если не нашли, возвращаем false
         return false;
     }
     
-    // Получение размера множества
-    int size() const {
-        // Возвращаем количество элементов
-        return count;
+    size_t getSize() const {
+        return size;
     }
     
-    // Очистка множества
-    void clear() {
-        // Создаем указатель для текущего узла, начинаем с головы
-        Node* current = head;
-        // Проходим по всем узлам списка
-        while (current != nullptr) {
-            // Сохраняем ссылку на текущий узел
-            Node* temp = current;
-            // Переходим к следующему узлу
-            current = current->next;
-            // Освобождаем память текущего узла
-            delete temp;
+    int getAt(size_t index) const {
+        if (index < size) {
+            return data[index];
         }
-        // Устанавливаем голову в nullptr
-        head = nullptr;
-        // Сбрасываем счетчик элементов
-        count = 0;
+        throw out_of_range("Index out of bounds");
     }
     
-    // Получение суммы элементов множества
+    void clear() {
+        size = 0;
+    }
+    
+    // Итераторы
+    int* begin() { return data; }
+    int* end() { return data + size; }
+    const int* begin() const { return data; }
+    const int* end() const { return data + size; }
+    
+    // Сортировка элементов
+    void sort() {
+        std::sort(data, data + size);
+    }
+};
+
+// Класс собственного множества целых чисел
+class FastSet {
+private:
+    IntArray elements;
+    
+public:
+    void add(int value) {
+        if (!contains(value)) {
+            elements.add(value);
+        }
+    }
+    
+    void remove(int value) {
+        elements.remove(value);
+    }
+    
+    bool contains(int value) const {
+        return elements.contains(value);
+    }
+    
+    void clear() {
+        elements.clear();
+    }
+    
+    size_t size() const {
+        return elements.getSize();
+    }
+    
     int sum() const {
-        // Инициализируем переменную для суммы
         int total = 0;
-        // Создаем указатель для текущего узла, начинаем с головы
-        Node* current = head;
-        // Проходим по всем узлам списка
-        while (current != nullptr) {
-            // Добавляем значение текущего узла к сумме
-            total += current->data;
-            // Переходим к следующему узлу
-            current = current->next;
+        for (size_t i = 0; i < elements.getSize(); i++) {
+            total += elements.getAt(i);
         }
         return total;
     }
     
-    // Получение всех элементов множества
-    void getElements(vector<int>& elements) const {
-        // Очищаем переданный вектор
-        elements.clear();
-        // Создаем указатель для текущего узла, начинаем с головы
-        Node* current = head;
-        // Проходим по всем узлам списка
-        while (current != nullptr) {
-            // Добавляем значение текущего узла в вектор
-            elements.push_back(current->data);
-            // Переходим к следующему узлу
-            current = current->next;
+    void getElements(vector<int>& result) const {
+        result.clear();
+        result.reserve(elements.getSize());
+        for (size_t i = 0; i < elements.getSize(); i++) {
+            result.push_back(elements.getAt(i));
         }
     }
     
-    // Вывод множества
+    vector<int> getElements() const {
+        vector<int> result;
+        getElements(result);
+        return result;
+    }
+    
     void print() const {
-        // Выводим открывающую фигурную скобку
         cout << "{";
-        // Создаем указатель для текущего узла, начинаем с головы
-        Node* current = head;
-        // Флаг для определения первого элемента
         bool first = true;
-        // Проходим по всем узлам списка
-        while (current != nullptr) {
-            // Если это не первый элемент, выводим запятую
+        for (size_t i = 0; i < elements.getSize(); i++) {
             if (!first) {
                 cout << ", ";
             }
-            // Выводим значение текущего узла
-            cout << current->data;
-            // Устанавливаем флаг в false после первого элемента
+            cout << elements.getAt(i);
             first = false;
-            // Переходим к следующему узлу
-            current = current->next;
         }
         cout << "}";
+    }
+    
+    // Операции с множествами
+    FastSet unionWith(const FastSet& other) const {
+        FastSet result;
+        
+        // Добавляем все элементы из текущего множества
+        for (size_t i = 0; i < elements.getSize(); i++) {
+            result.add(elements.getAt(i));
+        }
+        
+        // Добавляем элементы из другого множества
+        for (size_t i = 0; i < other.elements.getSize(); i++) {
+            result.add(other.elements.getAt(i));
+        }
+        
+        return result;
+    }
+    
+    FastSet intersectWith(const FastSet& other) const {
+        FastSet result;
+        
+        for (size_t i = 0; i < elements.getSize(); i++) {
+            int value = elements.getAt(i);
+            if (other.contains(value)) {
+                result.add(value);
+            }
+        }
+        
+        return result;
+    }
+    
+    FastSet differenceWith(const FastSet& other) const {
+        FastSet result;
+        
+        for (size_t i = 0; i < elements.getSize(); i++) {
+            int value = elements.getAt(i);
+            if (!other.contains(value)) {
+                result.add(value);
+            }
+        }
+        
+        return result;
+    }
+    
+    bool isSubsetOf(const FastSet& other) const {
+        for (size_t i = 0; i < elements.getSize(); i++) {
+            if (!other.contains(elements.getAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 };
 
 // Вспомогательная структура для хранения результата
 struct PartitionResult {
-    Set set1;
-    Set set2;
+    FastSet set1;
+    FastSet set2;
     int difference;
+    
+    void print() const {
+        cout << "Подмножество 1: ";
+        set1.print();
+        cout << " (сумма = " << set1.sum() << ")" << endl;
+        
+        cout << "Подмножество 2: ";
+        set2.print();
+        cout << " (сумма = " << set2.sum() << ")" << endl;
+        
+        cout << "Разница сумм: " << difference << endl;
+    }
 };
 
 // Рекурсивная функция для нахождения минимальной разницы
@@ -216,81 +261,264 @@ void findMinDifference(const vector<int>& elements, int index,
             bestSet1 = currentSet1;
             bestSet2 = currentSet2;
         }
-       
         return;
     }
     
     // Получаем текущий элемент по индексу
     int current = elements[index];
-    // Добавляем текущий элемент в вектор первого множества
+    
+    // Добавляем текущий элемент в первое множество
     currentSet1.push_back(current);
-    // Рекурсивно вызываем функцию для следующего элемента с обновленными параметрами
-    findMinDifference(elements, index + 1, currentSet1, currentSet2, bestSet1, bestSet2, minDiff, sum1 + current, sum2);
-    // Убираем элемент из вектора (backtracking)
+    findMinDifference(elements, index + 1, currentSet1, currentSet2, 
+                     bestSet1, bestSet2, minDiff, sum1 + current, sum2);
     currentSet1.pop_back();
+    
+    // Добавляем текущий элемент во второе множество
     currentSet2.push_back(current);
-    // Рекурсивно вызываем функцию для следующего элемента с обновленными параметрами
-    findMinDifference(elements, index + 1, currentSet1, currentSet2, bestSet1, bestSet2, minDiff, sum1, sum2 + current);
-    // Убираем элемент из вектора (backtracking)
+    findMinDifference(elements, index + 1, currentSet1, currentSet2, 
+                     bestSet1, bestSet2, minDiff, sum1, sum2 + current);
+    currentSet2.pop_back();
+}
+
+// Оптимизированная версия с отсечением
+void findMinDifferenceOptimized(const vector<int>& elements, int index, 
+                               vector<int>& currentSet1, vector<int>& currentSet2,
+                               vector<int>& bestSet1, vector<int>& bestSet2, 
+                               int& minDiff, int sum1, int sum2,
+                               int totalSum, vector<int>& suffixSums) {
+    // Базовый случай: все элементы распределены
+    if (index == elements.size()) {
+        int diff = abs(sum1 - sum2);
+        if (diff < minDiff) {
+            minDiff = diff;
+            bestSet1 = currentSet1;
+            bestSet2 = currentSet2;
+        }
+        return;
+    }
+    
+    // Отсечение: если текущая разница + минимальная возможная разница оставшихся элементов
+    // больше чем лучшая найденная разница, прекращаем поиск
+    int remainingSum = totalSum - sum1 - sum2;
+    int currentDiff = abs(sum1 - sum2);
+    
+    // Минимальная возможная разница при идеальном распределении оставшихся элементов
+    if (currentDiff - remainingSum > minDiff) {
+        return;
+    }
+    
+    int current = elements[index];
+    
+    // Пробуем добавить в первое множество
+    currentSet1.push_back(current);
+    findMinDifferenceOptimized(elements, index + 1, currentSet1, currentSet2,
+                              bestSet1, bestSet2, minDiff, sum1 + current, sum2,
+                              totalSum, suffixSums);
+    currentSet1.pop_back();
+    
+    // Пробуем добавить во второе множество
+    currentSet2.push_back(current);
+    findMinDifferenceOptimized(elements, index + 1, currentSet1, currentSet2,
+                              bestSet1, bestSet2, minDiff, sum1, sum2 + current,
+                              totalSum, suffixSums);
     currentSet2.pop_back();
 }
 
 // Функция для разделения множества на два подмножества с минимальной разницей сумм
-PartitionResult partitionSet(const Set& originalSet) {
-    // Создаем вектор для хранения элементов исходного множества
-    vector<int> elements;
+PartitionResult partitionSet(const FastSet& originalSet) {
     // Получаем все элементы из исходного множества
-    originalSet.getElements(elements);
+    vector<int> elements = originalSet.getElements();
     
-    vector<int> currentSet1, currentSet2;  // Создаем временные векторы для текущего распределения
-    vector<int> bestSet1, bestSet2; // Создаем временные векторы для текущего распределения
-    int minDiff = INT_MAX;  // Инициализируем минимальную разницу максимальным значением
+    // Если множество пустое
+    if (elements.empty()) {
+        PartitionResult result;
+        result.difference = 0;
+        return result;
+    }
     
-    findMinDifference(elements, 0, currentSet1, currentSet2, bestSet1, bestSet2, minDiff, 0, 0); // Инициализируем минимальную разницу максимальным значением
+    // Если только один элемент
+    if (elements.size() == 1) {
+        PartitionResult result;
+        result.set1.add(elements[0]);
+        result.difference = elements[0];
+        return result;
+    }
+    
+    // Сортируем элементы по убыванию для лучшего отсечения
+    sort(elements.rbegin(), elements.rend());
+    
+    vector<int> currentSet1, currentSet2;
+    vector<int> bestSet1, bestSet2;
+    int minDiff = INT_MAX;
+    
+    // Вычисляем общую сумму для оптимизации
+    int totalSum = 0;
+    for (int num : elements) {
+        totalSum += num;
+    }
+    
+    // Вычисляем суммы суффиксов для отсечения
+    vector<int> suffixSums(elements.size() + 1, 0);
+    for (int i = elements.size() - 1; i >= 0; i--) {
+        suffixSums[i] = suffixSums[i + 1] + elements[i];
+    }
+    
+    // Вызываем оптимизированную рекурсивную функцию
+    findMinDifferenceOptimized(elements, 0, currentSet1, currentSet2,
+                              bestSet1, bestSet2, minDiff, 0, 0,
+                              totalSum, suffixSums);
     
     // Создаем структуру для результата
     PartitionResult result;
+    
     // Заполняем первое подмножество лучшими элементами
     for (int num : bestSet1) {
-        result.set1.insert(num);
+        result.set1.add(num);
     }
+    
     // Заполняем второе подмножество лучшими элементами
     for (int num : bestSet2) {
-        result.set2.insert(num);
+        result.set2.add(num);
     }
-    result.difference = minDiff;    
+    
+    // Если какие-то элементы остались (должно быть все распределено)
+    // Добавляем оставшиеся во второе множество
+    FastSet allAssigned = result.set1.unionWith(result.set2);
+    for (int num : elements) {
+        if (!allAssigned.contains(num)) {
+            result.set2.add(num);
+        }
+    }
+    
+    result.difference = minDiff;
     return result;
 }
 
-int main() {
-    Set originalSet;
+// Альтернативный жадный алгоритм (быстрее, но не всегда оптимальный)
+PartitionResult partitionSetGreedy(const FastSet& originalSet) {
+    vector<int> elements = originalSet.getElements();
+    
+    // Сортируем по убыванию
+    sort(elements.rbegin(), elements.rend());
+    
+    PartitionResult result;
+    int sum1 = 0, sum2 = 0;
+    
+    // Жадное распределение
+    for (int num : elements) {
+        if (sum1 <= sum2) {
+            result.set1.add(num);
+            sum1 += num;
+        } else {
+            result.set2.add(num);
+            sum2 += num;
+        }
+    }
+    
+    result.difference = abs(sum1 - sum2);
+    return result;
+}
+
+// Функция для ввода множества
+FastSet inputSet() {
+    FastSet set;
     int n;
     
     cout << "Введите количество элементов в множестве: ";
     cin >> n;
     
+    if (n <= 0) {
+        cout << "Множество будет пустым." << endl;
+        return set;
+    }
+    
     cout << "Введите " << n << " натуральных чисел:" << endl;
     for (int i = 0; i < n; i++) {
         int num;
         cin >> num;
-        originalSet.insert(num);
+        if (num > 0) {
+            set.add(num);
+        } else {
+            cout << "Число " << num << " пропущено (только натуральные числа)." << endl;
+        }
     }
     
-    PartitionResult result = partitionSet(originalSet);
+    return set;
+}
+
+int main() {
+    cout << "=== РАЗБИЕНИЕ МНОЖЕСТВА НА ДВА ПОДМНОЖЕСТВА ===" << endl;
+    cout << "Цель: минимизировать разницу сумм элементов в подмножествах" << endl << endl;
+    
+    FastSet originalSet = inputSet();
+    
+    if (originalSet.size() == 0) {
+        cout << "Множество пустое. Программа завершена." << endl;
+        return 0;
+    }
     
     cout << "\nИсходное множество: ";
     originalSet.print();
     cout << endl;
+    cout << "Сумма всех элементов: " << originalSet.sum() << endl;
+    cout << "Количество элементов: " << originalSet.size() << endl;
     
-    cout << "Подмножество 1: ";
-    result.set1.print();
-    cout << " (сумма = " << result.set1.sum() << ")" << endl;
+    cout << "\nВыберите алгоритм:" << endl;
+    cout << "1. Точный алгоритм (рекурсивный поиск)" << endl;
+    cout << "2. Жадный алгоритм (быстрый, но не всегда оптимальный)" << endl;
+    cout << "Ваш выбор (1 или 2): ";
     
-    cout << "Подмножество 2: ";
-    result.set2.print();
-    cout << " (сумма = " << result.set2.sum() << ")" << endl;
+    int choice;
+    cin >> choice;
     
-    cout << "Разница сумм: " << result.difference << endl;
+    PartitionResult result;
+    
+    if (choice == 1) {
+        cout << "\nИспользуется точный алгоритм..." << endl;
+        
+        // Предупреждение для больших множеств
+        if (originalSet.size() > 20) {
+            cout << "Внимание: Для " << originalSet.size() << " элементов точный алгоритм" << endl;
+            cout << "может работать очень долго (2^" << originalSet.size() << " вариантов)." << endl;
+            cout << "Рекомендуется использовать жадный алгоритм для n > 20." << endl;
+            cout << "Продолжить? (y/n): ";
+            char answer;
+            cin >> answer;
+            if (answer != 'y' && answer != 'Y') {
+                cout << "Используем жадный алгоритм вместо точного." << endl;
+                result = partitionSetGreedy(originalSet);
+            } else {
+                result = partitionSet(originalSet);
+            }
+        } else {
+            result = partitionSet(originalSet);
+        }
+    } else {
+        cout << "\nИспользуется жадный алгоритм..." << endl;
+        result = partitionSetGreedy(originalSet);
+    }
+    
+    cout << "\n=== РЕЗУЛЬТАТ РАЗБИЕНИЯ ===" << endl;
+    result.print();
+    
+    // Дополнительная информация
+    cout << "\n=== АНАЛИЗ РЕЗУЛЬТАТА ===" << endl;
+    cout << "Идеальная разница (если бы можно было разделить поровну): 0" << endl;
+    cout << "Достигнутая разница: " << result.difference << endl;
+    
+    double totalSum = originalSet.sum();
+    double relativeError = (result.difference * 100.0) / totalSum;
+    cout << "Относительная погрешность: " << relativeError << "%" << endl;
+    
+    // Проверка, что все элементы распределены
+    FastSet unionSets = result.set1.unionWith(result.set2);
+    if (unionSets.size() == originalSet.size() && 
+        unionSets.isSubsetOf(originalSet) && 
+        originalSet.isSubsetOf(unionSets)) {
+        cout << "✓ Все элементы корректно распределены" << endl;
+    } else {
+        cout << "✗ Ошибка: не все элементы распределены!" << endl;
+    }
     
     return 0;
 }
