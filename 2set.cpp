@@ -1,418 +1,523 @@
 #include <iostream>
-#include <string>
 #include <fstream>
 #include <sstream>
-#include <algorithm>
+#include <string>
+#include <vector>
+#include <limits>
 
 using namespace std;
 
-// Класс для хранения массива строк с динамическим размером
-class StringArray {
-private:
-    string* data;
-    size_t capacity;
-    size_t size;
-    
-    void resize() {
-        capacity = capacity == 0 ? 4 : capacity * 2;
-        string* newData = new string[capacity];
-        for (size_t i = 0; i < size; i++) {
-            newData[i] = data[i];
-        }
-        delete[] data;
-        data = newData;
-    }
-    
-public:
-    StringArray() : data(nullptr), capacity(0), size(0) {}
-    
-    ~StringArray() {
-        delete[] data;
-    }
-    
-    void add(const string& value) {
-        if (size == capacity) {
-            resize();
-        }
-        data[size++] = value;
-    }
-    
-    bool remove(const string& value) {
-        for (size_t i = 0; i < size; i++) {
-            if (data[i] == value) {
-                // Сдвигаем элементы
-                for (size_t j = i; j < size - 1; j++) {
-                    data[j] = data[j + 1];
-                }
-                size--;
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    bool contains(const string& value) const {
-        for (size_t i = 0; i < size; i++) {
-            if (data[i] == value) {
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    size_t getSize() const {
-        return size;
-    }
-    
-    string* begin() { return data; }
-    string* end() { return data + size; }
-    const string* begin() const { return data; }
-    const string* end() const { return data + size; }
-    
-    // Сортировка элементов
-    void sort() {
-        std::sort(data, data + size);
-    }
-    
-    // Удаление дубликатов (предполагается, что массив отсортирован)
-    void unique() {
-        if (size == 0) return;
-        
-        size_t j = 0;
-        for (size_t i = 1; i < size; i++) {
-            if (data[i] != data[j]) {
-                data[++j] = data[i];
-            }
-        }
-        size = j + 1;
-    }
-    
-    void clear() {
-        size = 0;
-    }
+// Структура узла для хранения данных
+struct Node {
+    int data;
+    Node* next;
+    Node(int value) : data(value), next(nullptr) {} // Конструктор узла с значением
 };
 
-// Класс собственного множества
-class FastSet {
+class MySet {
 private:
-    StringArray elements;
+    Node* head; // Указатель на начало списка
+    int count;  // Количество элементов в множестве
     
+    // Вспомогательная функция для поиска узла с определенным значением
+    Node* findNode(int value) const {
+        Node* current = head;
+        while (current != nullptr) {
+            if (current->data == value) {
+                return current;
+            }
+            current = current->next;
+        }
+        return nullptr;
+    }
+
 public:
-    void add(const string& value) {
-        if (!contains(value)) {
-            elements.add(value);
+    MySet() : head(nullptr), count(0) {} 
+    
+    ~MySet() { 
+        clear(); 
+    }
+    
+    // Добавление элемента в множество
+    bool insert(int value) {
+        if (contains(value)) { // Проверяем, есть ли элемент уже в множестве
+            return false; // Элемент уже существует
         }
+        
+        Node* newNode = new Node(value); // Создаем новый узел
+        newNode->next = head; // Новый узел указывает на текущую голову
+        head = newNode; 
+        count++; 
+        return true; 
     }
     
-    void remove(const string& value) {
-        elements.remove(value);
-    }
-    
-    bool contains(const string& value) const {
-        return elements.contains(value);
-    }
-    
-    string toString() const {
-        string result;
-        for (size_t i = 0; i < elements.getSize(); i++) {
-            result += elements.begin()[i] + " ";
+    // Удаление элемента из множества
+    bool erase(int value) {
+        Node* current = head; // Начинаем с головы списка
+        Node* prev = nullptr; // Указатель на предыдущий узел
+        
+        while (current != nullptr) { // Проходим по всему списку
+            if (current->data == value) { // Если нашли нужный элемент
+                if (prev == nullptr) { // Если это первый элемент
+                    head = current->next; // Обновляем голову списка
+                } else {
+                    prev->next = current->next; // Пропускаем удаляемый узел
+                }
+                delete current; 
+                count--; 
+                return true; 
+            }
+            prev = current; // Сохраняем текущий узел как предыдущий
+            current = current->next; // Переходим к следующему узлу
         }
-        return result;
+        return false; 
     }
     
+    // Проверка наличия элемента в множестве
+    bool contains(int value) const {
+        return findNode(value) != nullptr;
+    }
+    
+    // Получение размера множества
+    int size() const {
+        return count; 
+    }
+    
+    // Очистка множества
     void clear() {
-        elements.clear();
+        Node* current = head; // Начинаем с головы списка
+        while (current != nullptr) { // Пока есть узлы
+            Node* temp = current; // Сохраняем текущий узел
+            current = current->next; // Переходим к следующему узлу
+            delete temp; // Удаляем сохраненный узел
+        }
+        head = nullptr; // Обнуляем указатель на голову
+        count = 0; 
     }
     
-    size_t size() const {
-        return elements.getSize();
+    // Получение суммы всех элементов множества
+    int sum() const {
+        int total = 0;
+        Node* current = head;
+        while (current != nullptr) {
+            total += current->data;
+            current = current->next;
+        }
+        return total;
     }
     
-    // Операции с множествами
-    FastSet unionWith(const FastSet& other) const {
-        FastSet result;
-        
-        // Добавляем все элементы из текущего множества
-        for (size_t i = 0; i < elements.getSize(); i++) {
-            result.add(elements.begin()[i]);
+    // Получение всех элементов множества 
+    void getElements(vector<int>& elements) const {
+        elements.clear(); // Очищаем вектор элементов
+        Node* current = head; // Начинаем с головы списка
+        while (current != nullptr) { // Проходим по всему списку
+            elements.push_back(current->data); // Добавляем элемент в вектор
+            current = current->next; // Переходим к следующему узлу
+        }
+    }
+    
+    // Проверка на пустоту множества
+    bool empty() const {
+        return count == 0;
+    }
+    
+    // Вывод всех элементов множества
+    void print() const {
+        if (empty()) {
+            cout << "Множество пусто" << endl;
+            return;
         }
         
-        // Добавляем элементы из другого множества
-        for (size_t i = 0; i < other.elements.getSize(); i++) {
-            result.add(other.elements.begin()[i]);
+        Node* current = head;
+        cout << "Элементы множества: ";
+        while (current != nullptr) {
+            cout << current->data << " ";
+            current = current->next;
+        }
+        cout << endl;
+    }
+    
+    // Копирование множества
+    MySet* clone() const {
+        MySet* newSet = new MySet();
+        vector<int> elements;
+        getElements(elements);
+        for (int elem : elements) {
+            newSet->insert(elem);
+        }
+        return newSet;
+    }
+    
+    // Операция объединения множеств
+    MySet* unionWith(const MySet& other) const {
+        MySet* result = clone(); // Копируем текущее множество
+        
+        vector<int> otherElements;
+        other.getElements(otherElements);
+        for (int elem : otherElements) {
+            result->insert(elem); // insert сам проверит на дубликаты
         }
         
         return result;
     }
     
-    FastSet intersectWith(const FastSet& other) const {
-        FastSet result;
+    // Операция пересечения множеств
+    MySet* intersectWith(const MySet& other) const {
+        MySet* result = new MySet();
         
-        for (size_t i = 0; i < elements.getSize(); i++) {
-            if (other.contains(elements.begin()[i])) {
-                result.add(elements.begin()[i]);
+        Node* current = head;
+        while (current != nullptr) {
+            if (other.contains(current->data)) {
+                result->insert(current->data);
             }
+            current = current->next;
         }
         
         return result;
     }
     
-    FastSet differenceWith(const FastSet& other) const {
-        FastSet result;
+    // Операция разности множеств
+    MySet* differenceWith(const MySet& other) const {
+        MySet* result = new MySet();
         
-        for (size_t i = 0; i < elements.getSize(); i++) {
-            if (!other.contains(elements.begin()[i])) {
-                result.add(elements.begin()[i]);
+        Node* current = head;
+        while (current != nullptr) {
+            if (!other.contains(current->data)) {
+                result->insert(current->data);
             }
+            current = current->next;
         }
         
         return result;
     }
     
-    bool isSubsetOf(const FastSet& other) const {
-        for (size_t i = 0; i < elements.getSize(); i++) {
-            if (!other.contains(elements.begin()[i])) {
+    // Проверка на подмножество
+    bool isSubsetOf(const MySet& other) const {
+        Node* current = head;
+        while (current != nullptr) {
+            if (!other.contains(current->data)) {
                 return false;
             }
+            current = current->next;
         }
         return true;
     }
     
-    // Чтение элементов в массив
-    void getAllElements(string* buffer, size_t maxSize) const {
-        size_t count = std::min(elements.getSize(), maxSize);
-        for (size_t i = 0; i < count; i++) {
-            buffer[i] = elements.begin()[i];
+    // Проверка на равенство множеств
+    bool equals(const MySet& other) const {
+        if (count != other.count) {
+            return false;
         }
+        
+        Node* current = head;
+        while (current != nullptr) {
+            if (!other.contains(current->data)) {
+                return false;
+            }
+            current = current->next;
+        }
+        return true;
+    }
+    
+    // Поиск максимального элемента
+    int max() const {
+        if (empty()) {
+            throw runtime_error("Множество пусто");
+        }
+        
+        int maxVal = head->data;
+        Node* current = head->next;
+        while (current != nullptr) {
+            if (current->data > maxVal) {
+                maxVal = current->data;
+            }
+            current = current->next;
+        }
+        return maxVal;
+    }
+    
+    // Поиск минимального элемента
+    int min() const {
+        if (empty()) {
+            throw runtime_error("Множество пусто");
+        }
+        
+        int minVal = head->data;
+        Node* current = head->next;
+        while (current != nullptr) {
+            if (current->data < minVal) {
+                minVal = current->data;
+            }
+            current = current->next;
+        }
+        return minVal;
     }
 };
 
-// Чтение множества из файла
-FastSet readSetFromFile(const string& filename, const string& setName) {
-    FastSet set;
-    ifstream file(filename);
+// Функция для сохранения множества в файл
+void saveSetToFile(const MySet& mySet, const string& filePath) {
+    ofstream outFile(filePath); 
+    vector<int> elements; // Вектор для хранения элементов
+    mySet.getElements(elements); // Получаем все элементы множества
     
-    if (!file.is_open()) {
-        cout << "Не удалось открыть файл: " << filename << endl;
-        return set;
+    for (int x : elements) { 
+        outFile << x << " "; 
     }
-    
-    string line;
-    bool foundSet = false;
-    
-    while (getline(file, line)) {
-        stringstream ss(line);
-        string name;
-        ss >> name;
-        
-        if (name == setName) {
-            foundSet = true;
-            string value;
-            while (ss >> value) {
-                set.add(value);
-            }
-            break;
-        }
-    }
-    
-    if (!foundSet) {
-        cout << "Множество '" << setName << "' не найдено в файле. Создано пустое множество." << endl;
-    }
-    
-    file.close();
-    return set;
+    outFile.close(); 
 }
 
-// Запись множества в файл
-void writeSetToFile(const string& filename, const string& setName, const FastSet& set) {
-    // Читаем все строки из файла
-    ifstream inFile(filename);
-    string content;
-    string line;
-    bool foundSet = false;
+// Функция для загрузки множества из файла
+MySet loadSetFromFile(const string& filePath) {
+    MySet mySet;
+    ifstream inFile(filePath);
+    if (!inFile.is_open()) {
+        return mySet; // Возвращаем пустое множество, если файл не существует
+    }
     
-    while (getline(inFile, line)) {
-        stringstream ss(line);
-        string name;
-        ss >> name;
-        
-        if (name == setName) {
-            // Заменяем строку обновленным множеством
-            content += setName + " " + set.toString() + "\n";
-            foundSet = true;
-        } else {
-            content += line + "\n";
-        }
+    int num;
+    while (inFile >> num) {
+        mySet.insert(num);
     }
     inFile.close();
-    
-    // Если множество не найдено, добавляем его в конец
-    if (!foundSet) {
-        content += setName + " " + set.toString() + "\n";
-    }
-    
-    // Перезаписываем файл
-    ofstream outFile(filename);
-    if (!outFile.is_open()) {
-        cout << "Не удалось открыть файл для записи: " << filename << endl;
-        return;
-    }
-    
-    outFile << content;
-    outFile.close();
+    return mySet;
 }
 
-// Вывод информации о множестве
-void displaySetInfo(const string& setName, const FastSet& set) {
-    cout << "Множество '" << setName << "':" << endl;
-    cout << "  Размер: " << set.size() << endl;
-    cout << "  Элементы: ";
-    
-    if (set.size() == 0) {
-        cout << "(пусто)";
-    } else {
-        cout << set.toString();
-    }
-    cout << endl;
-}
+// Функция добавления элементов в множество
+void SETADD(MySet& mySet, const string& filePath) {
+    cout << "Введите числа для добавления через пробел: ";
+    string line; 
 
-// Обработка команд с множествами
-void processSetCommand(const string& command, const string& filename) {
-    stringstream ss(command);
-    string operation, setName, value;
-    ss >> operation >> setName;
-    
-    FastSet set = readSetFromFile(filename, setName);
-    
-    if (operation == "SETADD") {
-        ss >> value;
-        set.add(value);
-        cout << "Элемент '" << value << "' добавлен в множество '" << setName << "'" << endl;
-        writeSetToFile(filename, setName, set);
-        displaySetInfo(setName, set);
-    }
-    else if (operation == "SETDEL") {
-        ss >> value;
-        bool removed = set.contains(value);
-        set.remove(value);
-        if (removed) {
-            cout << "Элемент '" << value << "' удален из множества '" << setName << "'" << endl;
+    // Считываем всю строку чисел сразу
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    getline(cin, line); // Читаем всю строку из cin
+
+    stringstream ss(line); // Создаем поток из строки для разбиения на числа
+    int num; // Переменная для хранения числа
+    bool changed = false;  // Флаг, чтобы определить, нужно ли сохранять файл
+
+    while (ss >> num) {    // Считываем числа по очереди из потока
+        if (mySet.insert(num)) { // Пытаемся добавить число в множество
+            cout << num << " добавлено\n"; 
+            changed = true; // Устанавливаем флаг изменений
         } else {
-            cout << "Элемент '" << value << "' не найден в множестве '" << setName << "'" << endl;
+            cout << num << " уже есть\n"; 
         }
-        writeSetToFile(filename, setName, set);
-        displaySetInfo(setName, set);
     }
-    else if (operation == "SET_AT") {
-        ss >> value;
-        bool exists = set.contains(value);
-        cout << "Элемент '" << value << "' " 
-             << (exists ? "присутствует" : "отсутствует") 
-             << " в множестве '" << setName << "'" << endl;
+
+    if (changed) saveSetToFile(mySet, filePath); // Сохраняем только если были изменения
+}
+
+// Функция удаления элементов из множества
+void SETDEL(MySet& mySet, const string& filePath) {
+    cout << "Введите числа для удаления через пробел: ";
+    string line; // Строка для ввода чисел
+
+    // Очистка буфера ввода, чтобы getline считал корректно
+    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Игнорируем оставшиеся символы в буфере
+
+    getline(cin, line);       // Считываем строку с числами для удаления
+    stringstream ss(line);    // Создаем поток из строки
+    int num; // Переменная для хранения числа
+    bool changed = false;     // Флаг, чтобы определить, нужно ли сохранять файл
+
+    while (ss >> num) { // Считываем числа по очереди
+        if (mySet.erase(num)) { // Пытаемся удалить число из множества
+            cout << num << " удалено\n"; // Сообщение об успешном удалении
+            changed = true; 
+        } else {
+            cout << num << " не найдено\n"; 
+        }
     }
-    else if (operation == "SET_SHOW") {
-        displaySetInfo(setName, set);
-    }
-    else if (operation == "SET_CLEAR") {
-        set.clear();
-        cout << "Множество '" << setName << "' очищено" << endl;
-        writeSetToFile(filename, setName, set);
-    }
-    else if (operation == "SET_SIZE") {
-        cout << "Размер множества '" << setName << "': " << set.size() << endl;
-    }
-    else {
-        cout << "Неизвестная операция: " << operation << endl;
-        cout << "Доступные операции: SETADD, SETDEL, SET_AT, SET_SHOW, SET_CLEAR, SET_SIZE" << endl;
+
+    if (changed) saveSetToFile(mySet, filePath); // Сохраняем только если были изменения
+}
+
+// Функция проверки наличия элемента в множестве
+void SET_AT(const MySet& mySet) {
+    cout << "Введите число для проверки: ";
+    int num; // Переменная для хранения числа
+    cin >> num;                 // Считываем одно число
+    if (mySet.contains(num)) // Проверяем наличие числа в множестве
+        cout << num << " присутствует\n"; 
+    else
+        cout << num << " отсутствует\n"; 
+}
+
+// Функция вывода размера множества
+void SET_SIZE(const MySet& mySet) {
+    cout << "Размер множества: " << mySet.size() << endl;
+}
+
+// Функция вывода всех элементов множества
+void SET_PRINT(const MySet& mySet) {
+    mySet.print();
+}
+
+// Функция очистки множества
+void SET_CLEAR(MySet& mySet, const string& filePath) {
+    mySet.clear();
+    saveSetToFile(mySet, filePath);
+    cout << "Множество очищено" << endl;
+}
+
+// Функция вывода суммы элементов множества
+void SET_SUM(const MySet& mySet) {
+    cout << "Сумма элементов: " << mySet.sum() << endl;
+}
+
+// Функция вывода максимального элемента
+void SET_MAX(const MySet& mySet) {
+    try {
+        cout << "Максимальный элемент: " << mySet.max() << endl;
+    } catch (const runtime_error& e) {
+        cout << e.what() << endl;
     }
 }
 
-// Операции с двумя множествами
-void processBinarySetCommand(const string& command, const string& filename) {
-    stringstream ss(command);
-    string operation, setName1, setName2, resultName;
-    ss >> operation >> setName1 >> setName2 >> resultName;
+// Функция вывода минимального элемента
+void SET_MIN(const MySet& mySet) {
+    try {
+        cout << "Минимальный элемент: " << mySet.min() << endl;
+    } catch (const runtime_error& e) {
+        cout << e.what() << endl;
+    }
+}
+
+// Функция объединения множеств
+void SET_UNION(MySet& mySet, const string& filePath) {
+    cout << "Введите числа для второго множества через пробел: ";
+    string line;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    getline(cin, line);
     
-    FastSet set1 = readSetFromFile(filename, setName1);
-    FastSet set2 = readSetFromFile(filename, setName2);
-    FastSet result;
-    
-    if (operation == "SET_UNION") {
-        result = set1.unionWith(set2);
-        cout << "Объединение множеств '" << setName1 << "' и '" << setName2 
-             << "' сохранено в '" << resultName << "'" << endl;
-    }
-    else if (operation == "SET_INTERSECT") {
-        result = set1.intersectWith(set2);
-        cout << "Пересечение множеств '" << setName1 << "' и '" << setName2 
-             << "' сохранено в '" << resultName << "'" << endl;
-    }
-    else if (operation == "SET_DIFFERENCE") {
-        result = set1.differenceWith(set2);
-        cout << "Разность множеств '" << setName1 << "' и '" << setName2 
-             << "' сохранено в '" << resultName << "'" << endl;
-    }
-    else if (operation == "SET_SUBSET") {
-        bool isSubset = set1.isSubsetOf(set2);
-        cout << "Множество '" << setName1 << "' " 
-             << (isSubset ? "является" : "не является") 
-             << " подмножеством '" << setName2 << "'" << endl;
-        return;
-    }
-    else {
-        cout << "Неизвестная бинарная операция: " << operation << endl;
-        cout << "Доступные операции: SET_UNION, SET_INTERSECT, SET_DIFFERENCE, SET_SUBSET" << endl;
-        return;
+    MySet otherSet;
+    stringstream ss(line);
+    int num;
+    while (ss >> num) {
+        otherSet.insert(num);
     }
     
-    writeSetToFile(filename, resultName, result);
-    displaySetInfo(resultName, result);
+    MySet* unionSet = mySet.unionWith(otherSet);
+    mySet = *unionSet;
+    delete unionSet;
+    
+    saveSetToFile(mySet, filePath);
+    cout << "Множества объединены" << endl;
+}
+
+// Функция пересечения множеств
+void SET_INTERSECT(MySet& mySet, const string& filePath) {
+    cout << "Введите числа для второго множества через пробел: ";
+    string line;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    getline(cin, line);
+    
+    MySet otherSet;
+    stringstream ss(line);
+    int num;
+    while (ss >> num) {
+        otherSet.insert(num);
+    }
+    
+    MySet* intersectSet = mySet.intersectWith(otherSet);
+    mySet = *intersectSet;
+    delete intersectSet;
+    
+    saveSetToFile(mySet, filePath);
+    cout << "Найдено пересечение множеств" << endl;
+}
+
+// Функция разности множеств
+void SET_DIFFERENCE(MySet& mySet, const string& filePath) {
+    cout << "Введите числа для второго множества через пробел: ";
+    string line;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    getline(cin, line);
+    
+    MySet otherSet;
+    stringstream ss(line);
+    int num;
+    while (ss >> num) {
+        otherSet.insert(num);
+    }
+    
+    MySet* diffSet = mySet.differenceWith(otherSet);
+    mySet = *diffSet;
+    delete diffSet;
+    
+    saveSetToFile(mySet, filePath);
+    cout << "Выполнена разность множеств" << endl;
+}
+
+// Функция проверки на подмножество
+void SET_SUBSET(const MySet& mySet) {
+    cout << "Введите числа для проверки на подмножество через пробел: ";
+    string line;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    getline(cin, line);
+    
+    MySet otherSet;
+    stringstream ss(line);
+    int num;
+    while (ss >> num) {
+        otherSet.insert(num);
+    }
+    
+    if (mySet.isSubsetOf(otherSet)) {
+        cout << "Текущее множество является подмножеством введенного" << endl;
+    } else {
+        cout << "Текущее множество НЕ является подмножеством введенного" << endl;
+    }
+}
+
+void printHelp() {
+    cout << "Доступные команды:" << endl;
+    cout << "  SETADD      - добавить элементы в множество" << endl;
+    cout << "  SETDEL      - удалить элементы из множества" << endl;
+    cout << "  SET_AT      - проверить наличие элемента" << endl;
+    cout << "  SET_SIZE    - показать размер множества" << endl;
+    cout << "  SET_PRINT   - вывести все элементы" << endl;
+    cout << "  SET_CLEAR   - очистить множество" << endl;
+    cout << "  SET_SUM     - вывести сумму элементов" << endl;
+    cout << "  SET_MAX     - найти максимальный элемент" << endl;
+    cout << "  SET_MIN     - найти минимальный элемент" << endl;
+    cout << "  SET_UNION   - объединить с другим множеством" << endl;
+    cout << "  SET_INTERSECT - найти пересечение с другим множеством" << endl;
+    cout << "  SET_DIFFERENCE - найти разность с другим множеством" << endl;
+    cout << "  SET_SUBSET  - проверить на подмножество" << endl;
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 5) {
-        cout << "Использование: " << argv[0] << " --file <filename> --query <command>" << endl;
-        cout << "\nПримеры команд:" << endl;
-        cout << "  SETADD myset apple" << endl;
-        cout << "  SETDEL myset apple" << endl;
-        cout << "  SET_AT myset apple" << endl;
-        cout << "  SET_SHOW myset" << endl;
-        cout << "  SET_CLEAR myset" << endl;
-        cout << "  SET_SIZE myset" << endl;
-        cout << "  SET_UNION set1 set2 result" << endl;
-        cout << "  SET_INTERSECT set1 set2 result" << endl;
-        cout << "  SET_DIFFERENCE set1 set2 result" << endl;
-        cout << "  SET_SUBSET set1 set2" << endl;
-        return 1;
+    // Проверка количества аргументов командной строки
+    if (argc != 5) { 
+        cerr << "Использование: ./program --file <файл> --query <операция>\n"; 
+        cerr << "Пример: ./program --file data.txt --query SETADD\n";
+        cerr << "Для справки: ./program --file data.txt --query HELP\n";
+        return 1; 
     }
 
-    string filename, query;
+    string filePath = argv[2]; 
+    string query = argv[4];    
 
-    for (int i = 1; i < argc; i++) {
-        if (string(argv[i]) == "--file") {
-            filename = argv[++i];
-        }
-        else if (string(argv[i]) == "--query") {
-            query = argv[++i];
-        }
-    }
+    // Загружаем множество из файла
+    MySet mySet = loadSetFromFile(filePath);
 
-    // Определяем тип операции
-    stringstream ss(query);
-    string operation;
-    ss >> operation;
-    
-    if (operation.substr(0, 3) == "SET") {
-        if (operation == "SET_UNION" || operation == "SET_INTERSECT" || 
-            operation == "SET_DIFFERENCE" || operation == "SET_SUBSET") {
-            processBinarySetCommand(query, filename);
-        } else {
-            processSetCommand(query, filename);
-        }
-    }
-    else {
-        cout << "Неизвестный тип запроса: " << query << endl;
-    }
+    // Вызов соответствующей функции в зависимости от запроса
+    if (query == "SETADD") SETADD(mySet, filePath);
+    else if (query == "SETDEL") SETDEL(mySet, filePath); 
+    else if (query == "SET_AT") SET_AT(mySet); 
+    else if (query == "SET_SIZE") SET_SIZE(mySet);
+    else if (query == "SET_PRINT") SET_PRINT(mySet);
+    else if (query == "SET_CLEAR") SET_CLEAR(mySet, filePath);
+    else if (query == "SET_SUM") SET_SUM(mySet);
+    else if (query == "SET_MAX") SET_MAX(mySet);
+    else if (query == "SET_MIN") SET_MIN(mySet);
+    else if (query == "SET_UNION") SET_UNION(mySet, filePath);
+    else if (query == "SET_INTERSECT") SET_INTERSECT(mySet, filePath);
+    else if (query == "SET_DIFFERENCE") SET_DIFFERENCE(mySet, filePath);
+    else if (query == "SET_SUBSET") SET_SUBSET(mySet);
+    else if (query == "HELP") printHelp();
+    else cerr << "Неизвестная операция. Введите HELP для справки.\n"; 
 
-    return 0;
+    return 0; 
 }
